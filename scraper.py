@@ -69,8 +69,8 @@ def fetch_existing_events(service, calendar_id: str, time_min: datetime, time_ma
     existing_events_by_key = {}
     events_result = service.events().list(
         calendarId=calendar_id,
-        timeMin=time_min.isoformat() + 'Z',
-        timeMax=time_max.isoformat() + 'Z',
+        timeMin=time_min.isoformat(),
+        timeMax=time_max.isoformat(),
         singleEvents=True,
         orderBy="startTime"
     ).execute()
