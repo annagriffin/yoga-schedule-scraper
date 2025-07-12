@@ -123,8 +123,13 @@ def parse_and_sync_events(html, service):
     soup = BeautifulSoup(html, "html.parser")
     sections = soup.select("div.schedule-day")
 
-    time_min = datetime.now()
-    time_max = time_min + timedelta(days=10)
+    # Compute next full Sunday to Saturday window
+    today = datetime.now()
+    days_until_sunday = (6 - today.weekday() + 1) % 7
+    next_sunday = (today + timedelta(days=days_until_sunday)).replace(hour=0, minute=0, second=0, microsecond=0)
+    time_min = mountain.localize(next_sunday)
+    time_max = time_min + timedelta(days=7)
+
     existing = fetch_existing_events(service, BOULDER_YOGA_CALENDAR_ID, time_min, time_max)
 
     for section in sections:
@@ -160,6 +165,9 @@ def parse_and_sync_events(html, service):
             start_dt = mountain.localize(datetime.strptime(f"{full_date.date()} {start_str}", "%Y-%m-%d %I:%M%p"))
             end_dt = mountain.localize(datetime.strptime(f"{full_date.date()} {end_str}", "%Y-%m-%d %I:%M%p"))
 
+            # Skip classes outside our defined window
+            if not (time_min <= start_dt < time_max):
+                continue
 
             raw_key = f"{start_dt.isoformat()}|{title_text}"
             key = hashlib.sha256(raw_key.encode()).hexdigest()
