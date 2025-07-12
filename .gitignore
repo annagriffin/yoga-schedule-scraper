@@ -9,6 +9,8 @@ env/
 # Secrets and credentials
 credentials.json
 token.json
+credentials.txt
+token.txt
 
 # IDE/editor stuff
 *.swp
