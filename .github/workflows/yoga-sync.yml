@@ -1,0 +1,36 @@
+name: Yoga Class Sync
+
+on:
+  schedule:
+    - cron: "0 14 * * 5" # Every Friday at 8 AM MT (14:00 UTC)
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    env:
+      BOULDER_YOGA_CALENDAR_ID: ${{ secrets.BOULDER_YOGA_CALENDAR_ID }}
+      # LONGMONT_YOGA_CALENDAR_ID: ${{ secrets.LONGMONT_YOGA_CALENDAR_ID }}
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔐 Decode credentials
+        run: |
+          echo "${{ secrets.CREDENTIALS_JSON }}" | base64 --decode > credentials.json
+          echo "${{ secrets.TOKEN_JSON }}" | base64 --decode > token.json
+
+      - name: 🚀 Run sync script
+        run: python your_script_name.py
