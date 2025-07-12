@@ -1,7 +1,6 @@
 name: Yoga Class Sync
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: "0 14 * * 5" # Every Friday at 8 AM MT (14:00 UTC)
   workflow_dispatch: # Allow manual trigger
@@ -34,4 +33,11 @@ jobs:
           echo "${{ secrets.TOKEN_JSON }}" | base64 --decode > token.json
 
       - name: 🚀 Run sync script
-        run: python your_script_name.py
+        run: python scraper.py
+
+      - name: Upload sync log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-log
+          path: action_output_log.txt

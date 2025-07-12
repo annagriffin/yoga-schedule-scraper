@@ -9,6 +9,7 @@ import os
 from dotenv import load_dotenv
 from dateutil import parser
 import pytz
+import sys
 
 
 # Config
@@ -20,6 +21,9 @@ if not BOULDER_YOGA_CALENDAR_ID:
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 mountain = pytz.timezone("America/Denver")
 
+if os.environ.get("GITHUB_ACTIONS") == "true":
+    sys.stdout = open("action_output_log.txt", "w")
+    sys.stderr = sys.stdout
 
 def extract_key_from_description(description: str) -> str:
     match = re.search(r"🔑 Key:\s*([a-f0-9]{64})", description)
@@ -194,6 +198,9 @@ def main():
     html = fetch_html()
     service = build_service()
     parse_and_sync_events(html, service)
+
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        sys.stdout.close()
 
 if __name__ == "__main__":
     main()
