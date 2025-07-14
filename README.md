@@ -42,7 +42,7 @@ Create a .env file in the root of the project:
 
 ```
 BOULDER_YOGA_CALENDAR_ID=your_calendar_id_here
-LONGMONT_YOGA_CALENDAR_ID=optional_other_calendar
+TABLE_MESA_YOGA_CALENDAR_ID=optional_other_calendar
 ```
 
 > Note: Your .env file is ignored by Git to protect sensitive data.
@@ -81,6 +81,8 @@ Includes:
 Set the following in your repo’s Settings → Secrets and variables → Actions → Repository secrets:
 
 `BOULDER_YOGA_CALENDAR_ID`
+
+`TABLE_MESA_YOGA_CALENDAR_ID`
 
 `CREDENTIALS_JSON` (base64-encoded credentials.json)
 

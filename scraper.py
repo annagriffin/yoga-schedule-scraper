@@ -11,19 +11,21 @@ from dateutil import parser
 import pytz
 import sys
 
-
 # Config
-load_dotenv()  # Load variables from .env if available
+load_dotenv()
 
-BOULDER_YOGA_CALENDAR_ID = os.environ.get("BOULDER_YOGA_CALENDAR_ID")
-if not BOULDER_YOGA_CALENDAR_ID:
-    raise RuntimeError("Missing BOULDER_YOGA_CALENDAR_ID environment variable.")
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 mountain = pytz.timezone("America/Denver")
 
 if os.environ.get("GITHUB_ACTIONS") == "true":
     sys.stdout = open("action_output_log.txt", "w")
     sys.stderr = sys.stdout
+
+def get_upcoming_sunday(today: datetime) -> datetime:
+    days_until_sunday = (6 - today.weekday() + 1) % 7
+    if days_until_sunday == 0:
+        days_until_sunday = 7
+    return today + timedelta(days=days_until_sunday)
 
 def extract_key_from_description(description: str) -> str:
     match = re.search(r"🔑 Key:\s*([a-f0-9]{64})", description)
@@ -39,7 +41,6 @@ def datetimes_equal(dt1: str, dt2: str) -> bool:
 def normalize_summary(summary: str) -> str:
     return summary.replace("[UPDATED] ", "").strip()
 
-
 def get_event_changes(existing_event: dict, new_event: dict) -> list:
     changes = []
 
@@ -48,13 +49,10 @@ def get_event_changes(existing_event: dict, new_event: dict) -> list:
 
     if old_summary != new_summary:
         changes.append(f"  📝 summary: {existing_event.get('summary')} -> {new_event.get('summary')}")
-
     if existing_event.get("location") != new_event.get("location"):
         changes.append(f"  📍 location: {existing_event.get('location')} -> {new_event.get('location')}")
-
     if not datetimes_equal(existing_event["start"]["dateTime"], new_event["start"]["dateTime"]):
         changes.append(f"  ⏰ start time: {existing_event['start']['dateTime']} -> {new_event['start']['dateTime']}")
-
     if not datetimes_equal(existing_event["end"]["dateTime"], new_event["end"]["dateTime"]):
         changes.append(f"  ⏳ end time: {existing_event['end']['dateTime']} -> {new_event['end']['dateTime']}")
 
@@ -83,7 +81,6 @@ def fetch_existing_events(service, calendar_id: str, time_min: datetime, time_ma
 
     return existing_events_by_key
 
-
 def create_or_update_event(service, calendar_id, event_data, key, existing_events_by_key):
     if key in existing_events_by_key:
         existing_event = existing_events_by_key[key]
@@ -103,34 +100,29 @@ def create_or_update_event(service, calendar_id, event_data, key, existing_event
         created = service.events().insert(calendarId=calendar_id, body=event_data).execute()
         print(f"✅ Created: {created['summary']} → {created['htmlLink']}")
 
-def get_next_week_schedule_url():
+def fetch_html(location_slug: str) -> str:
     today = datetime.now()
-    next_week = today + timedelta(days=7)
-    days_to_sunday = (next_week.weekday() + 1) % 7
-    next_sunday = next_week - timedelta(days=days_to_sunday)
+    next_sunday = get_upcoming_sunday(today)
     url_date = next_sunday.strftime("%Y-%m-%d")
-    return f"https://booking.yogapodboulderlongmont.com/co/boulder-30th-street/{url_date}/schedule?"
 
-def fetch_html():
-    url = get_next_week_schedule_url()
+    url = f"https://booking.yogapodboulderlongmont.com/co/{location_slug}/{url_date}/schedule?"
     print(f"🔗 Fetching: {url}")
+
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.text
 
-def parse_and_sync_events(html, service):
+def parse_and_sync_events(html, service, calendar_id, location_str):
     soup = BeautifulSoup(html, "html.parser")
     sections = soup.select("div.schedule-day")
 
-    # Compute next full Sunday to Saturday window
     today = datetime.now()
-    days_until_sunday = (6 - today.weekday() + 1) % 7
-    next_sunday = (today + timedelta(days=days_until_sunday)).replace(hour=0, minute=0, second=0, microsecond=0)
+    next_sunday = get_upcoming_sunday(today).replace(hour=0, minute=0, second=0, microsecond=0)
     time_min = mountain.localize(next_sunday)
     time_max = time_min + timedelta(days=7)
 
-    existing = fetch_existing_events(service, BOULDER_YOGA_CALENDAR_ID, time_min, time_max)
+    existing = fetch_existing_events(service, calendar_id, time_min, time_max)
 
     for section in sections:
         date_str = section.select_one(".schedule-day-header-date").get_text(strip=True)
@@ -141,8 +133,8 @@ def parse_and_sync_events(html, service):
             title_text = title.get_text(strip=True) if title else "N/A"
 
             title_text_lower = title_text.lower()
-
-            if "live stream" in title_text_lower or re.search(r"\b2\b", title_text_lower) or "front desk staff" in title_text_lower or "silent" in title_text_lower:
+            if "live stream" in title_text_lower or re.search(r"\b2\b", title_text_lower) or \
+               "front desk staff" in title_text_lower or "silent" in title_text_lower:
                 continue
 
             time_div = item.select_one(".class-time")
@@ -165,7 +157,6 @@ def parse_and_sync_events(html, service):
             start_dt = mountain.localize(datetime.strptime(f"{full_date.date()} {start_str}", "%Y-%m-%d %I:%M%p"))
             end_dt = mountain.localize(datetime.strptime(f"{full_date.date()} {end_str}", "%Y-%m-%d %I:%M%p"))
 
-            # Skip classes outside our defined window
             if not (time_min <= start_dt < time_max):
                 continue
 
@@ -184,7 +175,7 @@ def parse_and_sync_events(html, service):
 
             event = {
                 'summary': title_text,
-                'location': '1890 30th St, Boulder, CO 80301',
+                'location': location_str,
                 'description': description,
                 'start': {
                     'dateTime': start_dt.isoformat(),
@@ -196,16 +187,39 @@ def parse_and_sync_events(html, service):
                 },
             }
 
-            create_or_update_event(service, BOULDER_YOGA_CALENDAR_ID, event, key, existing)
+            create_or_update_event(service, calendar_id, event, key, existing)
 
 def build_service():
     creds = Credentials.from_authorized_user_file("token.json", SCOPES)
     return build("calendar", "v3", credentials=creds)
 
 def main():
-    html = fetch_html()
+    load_dotenv()
     service = build_service()
-    parse_and_sync_events(html, service)
+
+    BOULDER_YOGA_CALENDAR_ID = os.environ.get("BOULDER_YOGA_CALENDAR_ID")
+    TABLE_MESA_YOGA_CALENDAR_ID = os.environ.get("TABLE_MESA_YOGA_CALENDAR_ID")
+
+    if not BOULDER_YOGA_CALENDAR_ID and not TABLE_MESA_YOGA_CALENDAR_ID:
+        raise RuntimeError("At least one calendar ID must be set in environment variables.")
+
+    if BOULDER_YOGA_CALENDAR_ID:
+        html_boulder = fetch_html("boulder-30th-street")
+        parse_and_sync_events(
+            html_boulder,
+            service,
+            BOULDER_YOGA_CALENDAR_ID,
+            "1890 30th St, Boulder, CO 80301"
+        )
+
+    if TABLE_MESA_YOGA_CALENDAR_ID:
+        html_table_mesa = fetch_html("south-boulder-table-mesa")
+        parse_and_sync_events(
+            html_table_mesa,
+            service,
+            TABLE_MESA_YOGA_CALENDAR_ID,
+            "633 S Broadway Unit N, Boulder, CO 80305"
+        )
 
     if os.environ.get("GITHUB_ACTIONS") == "true":
         sys.stdout.close()
