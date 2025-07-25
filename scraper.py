@@ -22,10 +22,13 @@ if os.environ.get("GITHUB_ACTIONS") == "true":
     sys.stderr = sys.stdout
 
 def get_upcoming_sunday(today: datetime) -> datetime:
-    days_until_sunday = (6 - today.weekday() + 1) % 7
-    if days_until_sunday == 0:
-        days_until_sunday = 7
-    return today + timedelta(days=days_until_sunday)
+    i =7
+    while i > 0:
+        if today.weekday() == 6:
+            return today
+        today += timedelta(days=1)
+        i -= 1
+    return today
 
 def extract_key_from_description(description: str) -> str:
     match = re.search(r"🔑 Key:\s*([a-f0-9]{64})", description)
