@@ -197,14 +197,28 @@ def build_service():
     return build("calendar", "v3", credentials=creds)
 
 def main():
-    load_dotenv()
-    service = build_service()
+    try:
+        load_dotenv()
+        print("🔧 Environment loaded")
+        
+        # Check if credentials files exist
+        if not os.path.exists("token.json"):
+            raise FileNotFoundError("token.json not found. Make sure the GitHub secret TOKEN_JSON is properly set.")
+        if not os.path.exists("credentials.json"):
+            raise FileNotFoundError("credentials.json not found. Make sure the GitHub secret CREDENTIALS_JSON is properly set.")
+        
+        print("✅ Credentials files found")
+        service = build_service()
+        print("✅ Google Calendar service built")
 
-    BOULDER_YOGA_CALENDAR_ID = os.environ.get("BOULDER_YOGA_CALENDAR_ID")
-    TABLE_MESA_YOGA_CALENDAR_ID = os.environ.get("TABLE_MESA_YOGA_CALENDAR_ID")
+        BOULDER_YOGA_CALENDAR_ID = os.environ.get("BOULDER_YOGA_CALENDAR_ID")
+        TABLE_MESA_YOGA_CALENDAR_ID = os.environ.get("TABLE_MESA_YOGA_CALENDAR_ID")
 
-    if not BOULDER_YOGA_CALENDAR_ID and not TABLE_MESA_YOGA_CALENDAR_ID:
-        raise RuntimeError("At least one calendar ID must be set in environment variables.")
+        print(f"📅 Boulder Calendar ID: {'Set' if BOULDER_YOGA_CALENDAR_ID else 'Not set'}")
+        print(f"📅 Table Mesa Calendar ID: {'Set' if TABLE_MESA_YOGA_CALENDAR_ID else 'Not set'}")
+
+        if not BOULDER_YOGA_CALENDAR_ID and not TABLE_MESA_YOGA_CALENDAR_ID:
+            raise RuntimeError("At least one calendar ID must be set in environment variables.")
 
     if BOULDER_YOGA_CALENDAR_ID:
         html_boulder = fetch_html("boulder-30th-street")

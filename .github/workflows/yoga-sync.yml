@@ -11,7 +11,7 @@ jobs:
 
     env:
       BOULDER_YOGA_CALENDAR_ID: ${{ secrets.BOULDER_YOGA_CALENDAR_ID }}
-      LONGMONT_YOGA_CALENDAR_ID: ${{ secrets.TABLE_MESA_YOGA_CALENDAR_ID }}
+      TABLE_MESA_YOGA_CALENDAR_ID: ${{ secrets.TABLE_MESA_YOGA_CALENDAR_ID }}
 
     steps:
       - name: ⬇️ Checkout repo
