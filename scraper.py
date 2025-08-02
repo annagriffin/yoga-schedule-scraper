@@ -220,26 +220,32 @@ def main():
         if not BOULDER_YOGA_CALENDAR_ID and not TABLE_MESA_YOGA_CALENDAR_ID:
             raise RuntimeError("At least one calendar ID must be set in environment variables.")
 
-    if BOULDER_YOGA_CALENDAR_ID:
-        html_boulder = fetch_html("boulder-30th-street")
-        parse_and_sync_events(
-            html_boulder,
-            service,
-            BOULDER_YOGA_CALENDAR_ID,
-            "1890 30th St, Boulder, CO 80301"
-        )
+        if BOULDER_YOGA_CALENDAR_ID:
+            html_boulder = fetch_html("boulder-30th-street")
+            parse_and_sync_events(
+                html_boulder,
+                service,
+                BOULDER_YOGA_CALENDAR_ID,
+                "1890 30th St, Boulder, CO 80301"
+            )
 
-    if TABLE_MESA_YOGA_CALENDAR_ID:
-        html_table_mesa = fetch_html("south-boulder-table-mesa")
-        parse_and_sync_events(
-            html_table_mesa,
-            service,
-            TABLE_MESA_YOGA_CALENDAR_ID,
-            "633 S Broadway Unit N, Boulder, CO 80305"
-        )
+        if TABLE_MESA_YOGA_CALENDAR_ID:
+            html_table_mesa = fetch_html("south-boulder-table-mesa")
+            parse_and_sync_events(
+                html_table_mesa,
+                service,
+                TABLE_MESA_YOGA_CALENDAR_ID,
+                "633 S Broadway Unit N, Boulder, CO 80305"
+            )
 
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        sys.stdout.close()
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            sys.stdout.close()
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
